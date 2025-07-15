@@ -1,57 +1,55 @@
-# Replit Bounty Slack Bot
+# Slack Replit Bounty Bot
 
-## Objective
-
-A Flask app that scrapes the latest open bounties from [Replit Bounties](https://replit.com/bounties?status=open&order=creationDateDescending), identifies the highest-valued bounty posted in the last 24 hours, and sends it to a Slack channel. Deployed on Vercel and scheduled to run every 24 hours.
+## Overview
+This Flask app scrapes the latest open bounties from Replit, finds the highest-value bounty posted in the last 24 hours, and sends it to a Slack channel. It avoids duplicates and is designed for easy deployment on Vercel with scheduled scraping every 24 hours.
 
 ## Features
-- Flask API endpoint `/scrape` to trigger the bot
-- Scrapes Replit bounties using FireCrawl
-- Filters bounties posted in the last 24 hours
-- Sends the top-valued new bounty to Slack (no duplicates)
-- Tracks sent bounties in `sent_bounties.txt`
+- Scrapes https://replit.com/bounties for open bounties
+- Filters for bounties posted in the last 24 hours
+- Sends the highest-value new bounty to Slack
+- Avoids duplicate notifications
 - Deployable on Vercel (free tier)
-- Easy to schedule with Vercel Cron or external services
-
-## Setup
-
-1. **Clone the repo**
-2. **Install dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
-3. **Set up environment variables**
-   - Copy `.env.example` to `.env` and fill in your values:
-     - `SLACK_WEBHOOK_URL`: Your Slack Incoming Webhook URL
-     - `FIRECRAWL_API_KEY`: Your FireCrawl API key
-4. **Run locally**
-   ```bash
-   flask run --app api/index.py
-   # or
-   python api/index.py
-   ```
-5. **Test**
-   - Visit `http://localhost:5000/scrape` to trigger the bot
+- Can be triggered via endpoint or scheduled job
 
 ## Deployment (Vercel)
-
-1. **Push your code to GitHub**
-2. **Import your repo on [Vercel](https://vercel.com/import)**
-3. **Set environment variables in Vercel dashboard**
-   - `SLACK_WEBHOOK_URL`
-   - `FIRECRAWL_API_KEY`
-4. **Deploy!**
+1. **Fork/clone this repo.**
+2. **Set environment variables in Vercel dashboard:**
+   - `SLACK_WEBHOOK_URL`: Your Slack Incoming Webhook URL
+   - `FIRECRAWL_API_KEY`: Your Firecrawl API key
+3. **Deploy using the [Flask Hello World template](https://vercel.com/templates/python/flask-hello-world) or your own repo.**
+4. **Vercel will auto-detect the `vercel.json` config and deploy the Flask app.**
 
 ## Scheduling (Cron)
+- **Recommended:** Use [Vercel Cron Jobs](https://vercel.com/docs/cron-jobs) to call `/api/scrape` every 24 hours.
+- **Alternative:** Use an external service like [EasyCron](https://www.easycron.com/) or [GitHub Actions] to make a GET request to your deployed `/api/scrape` endpoint every 24 hours.
 
-- **Vercel Cron**: Add a schedule in the Vercel dashboard to hit `/scrape` every 24 hours.
-- **External Cron**: Use GitHub Actions, EasyCron, or UptimeRobot to make a GET request to your deployed `/scrape` endpoint every 24 hours.
+Example Vercel cron config (in Vercel dashboard):
+```
+Path: /api/scrape
+Schedule: 0 0 * * *
+```
+
+## Local Testing
+1. Create a `.env` file with your secrets:
+   ```
+   SLACK_WEBHOOK_URL=your-slack-webhook-url
+   FIRECRAWL_API_KEY=your-firecrawl-api-key
+   ```
+2. Run locally:
+   ```bash
+   pip install -r requirements.txt
+   python api/index.py
+   ```
+3. Visit `http://localhost:5000/scrape` to trigger the bot manually.
 
 ## Notes
-- Only bounties posted in the last 24 hours are considered.
-- Sent bounties are tracked in `sent_bounties.txt` to avoid duplicates.
-- For local testing, use a private Slack channel.
+- The app writes sent bounty links to `sent_bounties.txt` to avoid duplicates.
+- For production, consider using a persistent storage solution if needed.
+- For Slack testing, use a private channel until the bot is finalized.
 
----
-
-**Happy hacking!** 
+## Learning Goals
+- Flask basics
+- Python web scraping
+- Slack API integration
+- Vercel deployment
+- Cron job scheduling 

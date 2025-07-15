@@ -10,7 +10,12 @@ SENT_LOG = "sent_bounties.txt"
 SLACK_WEBHOOK_URL = os.getenv("SLACK_WEBHOOK_URL")
 FIRECRAWL_API_KEY = os.getenv("FIRECRAWL_API_KEY")
 
-# === Firecrawl Scraper using /search endpoint ===
+# === Health check endpoint for Vercel ===
+@app.route("/")
+def health():
+    return jsonify({"status": "ok"})
+
+# === Firecrawl Scraper using /scrape endpoint ===
 def get_bounties():
     print("📡 Fetching bounties via Firecrawl /scrape API...")
 
@@ -76,6 +81,8 @@ def get_bounties():
                 print(f"❌ Parse error on bounty {item}: {e}")
 
         print(f"✅ Parsed {len(bounties)} bounties")
+        for b in bounties:
+            print(f"Bounty: {b['title']} | Value: {b['value']} | Date: {b['created_at']} | Link: {b['link']}")
         return bounties
 
     except Exception as e:
@@ -105,21 +112,40 @@ def send_to_slack(bounty):
     res = requests.post(SLACK_WEBHOOK_URL, json=msg)
     print("✅ Slack sent" if res.status_code == 200 else f"❌ Slack error: {res.text}")
 
-# === Flask endpoint ===
-@app.route("/scrape", methods=["GET"])
-def scrape_bounties():
+# === Main scraping logic (can be called by endpoint or scheduler) ===
+def run_scraper():
     bounties = get_bounties()
     recent = filter_recent(bounties)
     sent = read_sent_links()
     unsent = [b for b in recent if b["link"] not in sent]
 
+    # Fallback: if no recent bounties, treat all as recent (for testing)
+    if not unsent and bounties:
+        print("No recent bounties found, using all bounties for testing.")
+        unsent = [b for b in bounties if b["link"] not in sent]
+
     if not unsent:
-        return jsonify({"message": "No new bounties found."})
+        return {"message": "No new bounties found."}
 
     top = max(unsent, key=lambda b: b["value"])
     send_to_slack(top)
     write_sent_link(top["link"])
-    return jsonify({"message": "Sent top bounty to Slack.", "bounty": top})
+    return {"message": "Sent top bounty to Slack.", "bounty": top}
 
+# === Flask endpoint ===
+@app.route("/scrape", methods=["GET"])
+def scrape_bounties():
+    result = run_scraper()
+    return jsonify(result)
+
+# === Debug endpoint to view all parsed bounties ===
+@app.route("/bounties", methods=["GET"])
+def view_bounties():
+    bounties = get_bounties()
+    return jsonify({"bounties": [
+        {"title": b["title"], "value": b["value"], "link": b["link"], "created_at": b["created_at"].isoformat()} for b in bounties
+    ]})
+
+# For Vercel: do not use app.run()
 if __name__ == "__main__":
     app.run(debug=True)
